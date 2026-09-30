@@ -1,0 +1,9 @@
+{
+  "routes": [
+    { "path": "/", "title": "Browse public datasets" },
+    { "path": "/Downloads", "title": "Downloaded files" },
+    { "path": "/Repositories/Preview", "title": "Remote Parquet preview" },
+    { "path": "/Parquet/Preview", "title": "Local Parquet preview" },
+    { "path": "/Home/Error", "title": "Application error" }
+  ]
+}

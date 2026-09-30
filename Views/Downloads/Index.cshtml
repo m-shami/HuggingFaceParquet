@@ -1,0 +1,65 @@
+@model DownloadedFilesViewModel
+@{
+    ViewData["Title"] = "Downloaded files";
+}
+<section class="page-heading compact-heading">
+    <div>
+        <p class="eyebrow">LOCAL LIBRARY</p>
+        <h1>Downloaded files</h1>
+        <p class="lead">Browse Parquet shards currently available in this app's download folder.</p>
+    </div>
+    <a class="button button-primary" asp-controller="Home" asp-action="Index">Browse repositories <span aria-hidden="true">→</span></a>
+</section>
+
+<div class="notice notice-warning" role="note">
+    <strong>Storage and access</strong>
+    <span>Files are stored in <code>wwwroot/download/{owner}/{repo}/{config}/{split}/</code> and served as static files. Anyone who can access this app can access these public files. A hosted container's local disk is temporary and files can disappear after a restart; use local or trusted self-hosting when files must remain available.</span>
+</div>
+
+@if (Model.Files.Count == 0)
+{
+    <section class="panel empty-state">
+        <span class="empty-icon" aria-hidden="true">▤</span>
+        <h2>No downloaded files yet</h2>
+        <p>Pick a public repository, select one or more Parquet shards, and start a download.</p>
+        <a class="button button-primary" asp-controller="Home" asp-action="Index">Find a dataset</a>
+    </section>
+}
+else
+{
+    @foreach (var group in Model.Files.GroupBy(file => file.RepoId).OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase))
+    {
+        <section class="results-section download-group">
+            <div class="results-heading">
+                <div>
+                    <p class="eyebrow">REPOSITORY</p>
+                    <h2><code>@group.Key</code></h2>
+                    <p class="muted">@group.Count() downloaded file@(group.Count() == 1 ? "" : "s")</p>
+                </div>
+            </div>
+            <div class="panel file-panel">
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead><tr><th>Path</th><th class="numeric">Size</th><th>Downloaded</th><th>Actions</th></tr></thead>
+                        <tbody>
+                        @foreach (var file in group)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="file-name">@file.Config/@file.Split/@file.Filename</span>
+                                </td>
+                                <td class="numeric">@file.SizeLabel</td>
+                                <td class="muted">@file.LastModifiedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="actions-cell">
+                                    <a class="table-link" asp-controller="Parquet" asp-action="Preview" asp-route-fileId="@file.Id">Preview</a>
+                                    <a class="table-link" href="@file.DownloadUrl" download>Open file</a>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    }
+}

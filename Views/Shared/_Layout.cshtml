@@ -1,0 +1,67 @@
+﻿@{
+    var title = ViewData["Title"] as string ?? "Parquet Browser";
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "Home";
+}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#155a5c" />
+    <meta name="description" content="Browse public Hugging Face Parquet shards, download selected files, and preview rows." />
+    <title>@title · Parquet Browser</title>
+    <link rel="icon" type="image/svg+xml" href="~/images/parquet-browser-icon.svg" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="brand" asp-controller="Home" asp-action="Index" aria-label="Parquet Browser home">
+                <img src="~/images/parquet-browser-icon.svg" width="36" height="36" alt="" class="brand-mark" />
+                <span>Parquet <strong>Browser</strong></span>
+            </a>
+            <nav class="site-nav" aria-label="Main navigation">
+                <a class="@(controller == "Home" ? "active" : "")" asp-controller="Home" asp-action="Index">Browse</a>
+                <a class="@(controller == "Downloads" || controller == "Parquet" ? "active" : "")" asp-controller="Downloads" asp-action="Index">Downloads</a>
+            </nav>
+        </div>
+    </header>
+    <main class="page-shell" id="main-content">
+        @RenderBody()
+        <section class="panel progress-panel" id="download-progress-panel" hidden aria-live="polite">
+            <form id="download-job-token" class="sr-only" method="post">@Html.AntiForgeryToken()</form>
+            <div class="progress-heading">
+                <div>
+                    <p class="eyebrow">DOWNLOAD JOB</p>
+                    <h2 id="job-status-title">Queued</h2>
+                    <p class="muted" id="job-summary"></p>
+                </div>
+                <div class="toolbar-actions">
+                    <button type="button" class="button button-danger button-small" id="cancel-download">Cancel</button>
+                    <button type="button" class="button button-quiet button-small" id="retry-download" hidden>Retry failed</button>
+                </div>
+            </div>
+            <div class="progress-track" role="progressbar" aria-label="Overall download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <span id="overall-progress-bar"></span>
+            </div>
+            <div class="progress-caption"><span id="overall-progress-text">Preparing…</span><a asp-controller="Downloads" asp-action="Index">View downloaded files</a></div>
+            <div class="table-scroll">
+                <table class="data-table progress-table">
+                    <thead><tr><th>File</th><th>Status</th><th class="numeric">Progress</th></tr></thead>
+                    <tbody id="download-file-progress"></tbody>
+                </table>
+            </div>
+            <p class="inline-error" id="download-error" role="alert" hidden></p>
+        </section>
+    </main>
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <span>Public datasets · no account required</span>
+            <span>Downloads stay in <code>wwwroot/download</code></span>
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,38 @@
+@model RemotePreviewViewModel
+@{
+    ViewData["Title"] = "Remote Parquet preview";
+}
+<section class="page-heading compact-heading">
+    <div>
+        <p class="eyebrow">REMOTE DATASET VIEWER</p>
+        <h1>Preview rows online</h1>
+        <p class="lead"><code>@Model.RepoId</code> <span class="tag">@Model.Config</span> <span class="tag tag-muted">@Model.Split</span></p>
+    </div>
+    <a class="button button-quiet" asp-controller="Home" asp-action="Index" asp-route-repoId="@Model.RepoId">← Back to files</a>
+</section>
+<section class="panel preview-panel" id="remote-preview"
+         data-rows-url="@Url.Action("Rows", "Repositories")"
+         data-repo-id="@Model.RepoId"
+         data-config="@Model.Config"
+         data-split="@Model.Split"
+         data-page-size="50">
+    <div class="preview-toolbar">
+        <div>
+            <h2>Dataset rows</h2>
+            <p class="muted" id="remote-preview-summary">Loading the Dataset Viewer…</p>
+        </div>
+        <div class="pager">
+            <button class="button button-quiet button-small" type="button" id="remote-prev" disabled>← Previous</button>
+            <span class="page-label" id="remote-page-label">Page 1</span>
+            <button class="button button-quiet button-small" type="button" id="remote-next" disabled>Next →</button>
+        </div>
+    </div>
+    <div class="notice notice-warning" id="remote-partial-warning" hidden>
+        <strong>Partial viewer result</strong><span>The Hub reports that this preview is partial.</span>
+    </div>
+    <div class="preview-status" id="remote-preview-status" role="status">Requesting the first page…</div>
+    <div class="table-scroll preview-table-scroll">
+        <table class="data-table preview-table"><thead id="remote-preview-head"></thead><tbody id="remote-preview-body"></tbody></table>
+    </div>
+    <p class="preview-fallback">If the Dataset Viewer is unavailable for this split, go back and download a shard to use the local preview.</p>
+</section>

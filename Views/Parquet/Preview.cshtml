@@ -1,0 +1,50 @@
+@model LocalPreviewViewModel
+@{
+    ViewData["Title"] = "Local Parquet preview";
+}
+<section class="page-heading compact-heading">
+    <div>
+        <p class="eyebrow">LOCAL PARQUET READER</p>
+        <h1>Preview downloaded file</h1>
+        <p class="lead"><code>@Model.RepoId</code> <span class="tag">@Model.Config</span> <span class="tag tag-muted">@Model.Split</span></p>
+    </div>
+    <a class="button button-quiet" asp-controller="Downloads" asp-action="Index">← Back to downloads</a>
+</section>
+<section class="panel preview-panel" id="local-preview"
+         data-rows-url="@Url.Action("Rows", "Parquet")"
+         data-file-id="@Model.FileId"
+         data-page-size="@Model.PageSize">
+    <div class="preview-toolbar">
+        <div>
+            <h2>@Model.Filename</h2>
+            <p class="muted">@Model.SizeLabel · @(Model.TotalRows.ToString("N0")) rows · @Model.Columns.Count columns</p>
+        </div>
+        <div class="pager">
+            <button class="button button-quiet button-small" type="button" id="local-prev" disabled>← Previous</button>
+            <span class="page-label" id="local-page-label">Page 1</span>
+            <button class="button button-quiet button-small" type="button" id="local-next" disabled>Next →</button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Error))
+    {
+        <div class="notice notice-error" role="alert"><strong>Preview unavailable</strong><span>@Model.Error</span></div>
+    }
+    else
+    {
+        <details class="schema-details">
+            <summary>Schema <span class="muted">(@Model.Columns.Count columns)</span></summary>
+            <div class="schema-list">
+                @foreach (var column in Model.Columns)
+                {
+                    <div class="schema-item"><code>@column.Name</code><span>@column.Type@(column.IsNullable ? "?" : "")</span>@if (column.IsRepeated) { <span class="tag tag-muted">repeated</span> }</div>
+                }
+            </div>
+        </details>
+        <div class="preview-status" id="local-preview-status" role="status">Loading the first page…</div>
+        <div class="table-scroll preview-table-scroll">
+            <table class="data-table preview-table"><thead id="local-preview-head"></thead><tbody id="local-preview-body"></tbody></table>
+        </div>
+        <p class="preview-fallback">Pages read one Parquet row group at a time. Nested/repeated columns are identified but not expanded in the simple grid.</p>
+    }
+</section>

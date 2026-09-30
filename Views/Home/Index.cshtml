@@ -1,0 +1,245 @@
+﻿@model RepositoryIndexViewModel
+@{
+    ViewData["Title"] = "Browse public datasets";
+    var showingFolders = Model.Folders.Count > 0;
+    var showingFiles = Model.Files.Count > 0;
+    var folderLabel = string.IsNullOrEmpty(Model.BrowseConfig) ? "configs" : "splits";
+    string PageHref(int targetPage)
+    {
+        var parts = new List<string> { $"repoId={Uri.EscapeDataString(Model.RepoId)}", $"page={targetPage}" };
+        if (!string.IsNullOrEmpty(Model.BrowseConfig)) parts.Add($"config={Uri.EscapeDataString(Model.BrowseConfig)}");
+        if (!string.IsNullOrEmpty(Model.BrowseSplit)) parts.Add($"split={Uri.EscapeDataString(Model.BrowseSplit)}");
+        return "/?" + string.Join("&", parts);
+    }
+}
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">HUGGING FACE DATASET VIEWER</p>
+        <h1>Browse public datasets</h1>
+        <p class="lead">Find Parquet shards, download only what you need, and inspect rows in your browser.</p>
+    </div>
+    <div class="heading-note"><span class="status-dot"></span> Public repositories only</div>
+</section>
+
+<section class="panel search-panel" aria-labelledby="repo-search-title">
+    <div class="panel-heading">
+        <div>
+            <h2 id="repo-search-title">Dataset repository</h2>
+            <p>Enter a Hugging Face dataset ID such as <code>cornell-movie-review-data/rotten_tomatoes</code>.</p>
+        </div>
+    </div>
+    <form class="repo-search" method="get" action="/">
+        <label class="sr-only" for="repoId">Dataset repository ID</label>
+        <span class="search-prefix" aria-hidden="true">hf.co /</span>
+        <input id="repoId" name="repoId" value="@Model.RepoId" placeholder="owner / repository" autocomplete="off" spellcheck="false" required />
+        <button class="button button-primary" type="submit">Find Parquet files <span aria-hidden="true">→</span></button>
+    </form>
+    <p class="form-hint">Use the dataset ID from the repository page. This tool does not need a Hugging Face token for public data.</p>
+    @if (Model.RecentRepositories.Count > 0)
+    {
+        <div class="recent-repos" aria-label="Recently queried repositories">
+            <span class="recent-label">Recent</span>
+            @foreach (var recent in Model.RecentRepositories)
+            {
+                <a class="recent-chip@(string.Equals(recent.RepoId, Model.RepoId, StringComparison.OrdinalIgnoreCase) ? " is-active" : "")"
+                   asp-controller="Home" asp-action="Index" asp-route-repoId="@recent.RepoId"
+                   title="@recent.FileCount file(s) · @recent.QueriedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")">
+                    @recent.RepoId
+                </a>
+            }
+        </div>
+    }
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="notice notice-error" role="alert"><strong>Could not load this repository.</strong><span>@Model.Error</span></div>
+}
+@if (Model.Partial || Model.PendingCount > 0 || Model.FailedCount > 0)
+{
+    <div class="notice notice-warning" role="status">
+        <strong>Some file information may be incomplete.</strong>
+        <span>The Dataset Viewer reports a partial result. Pending: @Model.PendingCount · failed: @Model.FailedCount. Try again later or download an available shard.</span>
+    </div>
+}
+
+@if (showingFolders || showingFiles)
+{
+    <section class="results-section" aria-labelledby="files-title">
+        <div class="results-heading">
+            <div>
+                <p class="eyebrow">REPOSITORY</p>
+                <h2 id="files-title"><code>@Model.RepoId</code></h2>
+                <p class="muted">
+                    @Model.TotalFileCount file@(Model.TotalFileCount == 1 ? "" : "s") total
+                    · @Model.TotalItems @(showingFolders ? folderLabel : "shard" + (Model.TotalItems == 1 ? "" : "s")) here
+                    @if (Model.TotalPages > 1)
+                    {
+                        <text>· page @Model.Page of @Model.TotalPages</text>
+                    }
+                </p>
+            </div>
+            <div class="result-actions">
+                @{
+                    var previewLinks = Model.PreviewGroups.AsEnumerable();
+                    if (!string.IsNullOrEmpty(Model.BrowseConfig))
+                        previewLinks = previewLinks.Where(g => string.Equals(g.Config, Model.BrowseConfig, StringComparison.Ordinal));
+                    if (!string.IsNullOrEmpty(Model.BrowseSplit))
+                        previewLinks = previewLinks.Where(g => string.Equals(g.Split, Model.BrowseSplit, StringComparison.Ordinal));
+                }
+                @foreach (var group in previewLinks)
+                {
+                    <a class="button button-quiet" asp-controller="Repositories" asp-action="Preview" asp-route-repoId="@Model.RepoId" asp-route-config="@group.Config" asp-route-split="@group.Split">
+                        Preview @group.Config / @group.Split online
+                    </a>
+                }
+            </div>
+        </div>
+
+        <nav class="path-breadcrumb" aria-label="Folder path">
+            <a asp-controller="Home" asp-action="Index" asp-route-repoId="@Model.RepoId">@Model.RepoId</a>
+            @if (!string.IsNullOrEmpty(Model.BrowseConfig))
+            {
+                <span class="crumb-sep" aria-hidden="true">/</span>
+                @if (string.IsNullOrEmpty(Model.BrowseSplit))
+                {
+                    <span aria-current="page">@Model.BrowseConfig</span>
+                }
+                else
+                {
+                    <a asp-controller="Home" asp-action="Index" asp-route-repoId="@Model.RepoId" asp-route-config="@Model.BrowseConfig">@Model.BrowseConfig</a>
+                    <span class="crumb-sep" aria-hidden="true">/</span>
+                    <span aria-current="page">@Model.BrowseSplit</span>
+                }
+            }
+        </nav>
+
+        @if (showingFolders)
+        {
+            <div class="panel file-panel">
+                <div class="table-scroll">
+                    <table class="data-table" id="folder-table">
+                        <thead>
+                            <tr>
+                                <th>Folder</th>
+                                <th>Type</th>
+                                <th class="numeric">Files</th>
+                                <th class="numeric">Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var folder in Model.Folders)
+                        {
+                            <tr class="folder-row">
+                                <td>
+                                    <a class="folder-link" href="@folder.Href">
+                                        <span class="folder-icon" aria-hidden="true"></span>
+                                        <span class="file-name">@folder.Name</span>
+                                    </a>
+                                </td>
+                                <td><span class="tag tag-muted">@folder.Kind</span></td>
+                                <td class="numeric">@folder.FileCount</td>
+                                <td class="numeric">@folder.SizeLabel</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.TotalPages > 1)
+                {
+                    <div class="browse-pager">
+                        @if (Model.Page > 1)
+                        {
+                            <a class="button button-quiet button-small" href="@PageHref(Model.Page - 1)">← Previous</a>
+                        }
+                        else
+                        {
+                            <button class="button button-quiet button-small" type="button" disabled>← Previous</button>
+                        }
+                        <span class="page-label">Page @Model.Page of @Model.TotalPages</span>
+                        @if (Model.Page < Model.TotalPages)
+                        {
+                            <a class="button button-quiet button-small" href="@PageHref(Model.Page + 1)">Next →</a>
+                        }
+                        else
+                        {
+                            <button class="button button-quiet button-small" type="button" disabled>Next →</button>
+                        }
+                    </div>
+                }
+                <div class="table-footnote">Open a folder to see splits or Parquet shards. Paths match the Hub layout <code>config/split/filename</code>.</div>
+            </div>
+        }
+        else if (showingFiles)
+        {
+            <form id="download-form" class="panel file-panel" asp-controller="Downloads" asp-action="Start" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="RepoId" value="@Model.RepoId" />
+                <div class="table-toolbar">
+                    <div class="selection-summary" id="selection-summary" aria-live="polite">No files selected</div>
+                    <div class="toolbar-actions">
+                        <button type="button" class="button button-quiet button-small" id="clear-selection">Clear selection</button>
+                        <button type="submit" class="button button-primary" id="download-selected" disabled>Download selected</button>
+                    </div>
+                </div>
+                <div class="table-scroll">
+                    <table class="data-table" id="file-table">
+                        <thead>
+                            <tr>
+                                <th class="check-cell"><input type="checkbox" id="select-all" aria-label="Select all Parquet files on this page" /></th>
+                                <th>Path</th>
+                                <th class="numeric">Size</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var file in Model.Files)
+                        {
+                            <tr>
+                                <td class="check-cell"><input class="file-select" type="checkbox" name="FileIds" value="@file.Id" data-size="@(file.Size?.ToString() ?? string.Empty)" aria-label="Select @file.DisplayPath" /></td>
+                                <td>
+                                    <span class="file-name">@file.DisplayPath</span>
+                                    <div class="muted path-basename">@file.Filename</div>
+                                </td>
+                                <td class="numeric">@file.SizeLabel</td>
+                                <td>@if (file.IsDownloaded) { <span class="badge badge-success">Saved locally</span> } else { <span class="muted">Available</span> }</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.TotalPages > 1)
+                {
+                    <div class="browse-pager">
+                        @if (Model.Page > 1)
+                        {
+                            <a class="button button-quiet button-small" href="@PageHref(Model.Page - 1)">← Previous</a>
+                        }
+                        else
+                        {
+                            <button class="button button-quiet button-small" type="button" disabled>← Previous</button>
+                        }
+                        <span class="page-label">Page @Model.Page of @Model.TotalPages</span>
+                        @if (Model.Page < Model.TotalPages)
+                        {
+                            <a class="button button-quiet button-small" href="@PageHref(Model.Page + 1)">Next →</a>
+                        }
+                        else
+                        {
+                            <button class="button button-quiet button-small" type="button" disabled>Next →</button>
+                        }
+                    </div>
+                }
+                <div class="table-footnote">Files are downloaded sequentially. Existing complete files are skipped. Select all applies to the current page only.</div>
+            </form>
+        }
+    </section>
+}
+else if (!string.IsNullOrWhiteSpace(Model.RepoId) && string.IsNullOrWhiteSpace(Model.Error) && !Model.Partial && Model.PendingCount == 0)
+{
+    <section class="panel empty-state">
+        <span class="empty-icon" aria-hidden="true">▦</span>
+        <h2>No Parquet files listed</h2>
+        <p>This repository may still be processing, may not contain Parquet files, or may have its viewer disabled.</p>
+    </section>
+}

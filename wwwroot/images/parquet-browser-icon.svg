@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Parquet Browser</title>
+  <rect width="512" height="512" fill="#155a5c"/>
+  <path fill="#f1f8f6" d="M106 132h300v70H106zM106 221h145v70H106zM269 221h137v70H269zM106 310h86v70h-86zM210 310h196v70H210z"/>
+</svg>
